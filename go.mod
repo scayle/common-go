@@ -1,4 +1,4 @@
-module github.com/scayle/common
+module github.com/scayle/common-go
 
 go 1.15
 
