@@ -61,11 +61,7 @@ func WithHTTPHealthCheck(defaultPort int) Option {
 	return WithRegistrationModifier(func(registration *api.AgentServiceRegistration) {
 		// setup simple health detection using a small webserver
 		registration.Check = new(api.AgentServiceCheck)
-		healthPortNr, err := strconv.Atoi(HealthPort(defaultPort)[1:len(HealthPort(defaultPort))])
-		if err != nil {
-			log.Fatalf("wrong healt Port format %v", err)
-		}
-		registration.Check.HTTP = fmt.Sprintf("http://%s:%v/healthcheck", registration.Address, healthPortNr)
+		registration.Check.HTTP = fmt.Sprintf("http://%s:%d/healthcheck", registration.Address, healthPort(defaultPort))
 		registration.Check.Interval = "5s"
 		registration.Check.Timeout = "3s"
 		http.HandleFunc("/healthcheck", func(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +72,7 @@ func WithHTTPHealthCheck(defaultPort int) Option {
 		})
 
 		go func() {
-			err := http.ListenAndServe(HealthPort(defaultPort), nil)
+			err := http.ListenAndServe(fmt.Sprintf(":%d", healthPort(defaultPort)), nil)
 			log.Fatalf("healthcheck webserver failed %v", err)
 		}()
 	})
@@ -84,7 +80,7 @@ func WithHTTPHealthCheck(defaultPort int) Option {
 
 // RegisterServiceWithConsul registers a new service to consul.
 //
-// Deprecated: To use a simple HTTP health service, use WithHTTPHealthCheck().
+// Deprecation note: To use a simple HTTP health service, use WithHTTPHealthCheck().
 // Currently it uses WithHTTPHealthCheck automatically if no other RegistrationModifier is used.
 // From v1.0.0 on RegisterServiceWithConsul will not do this automatically anymore.
 func RegisterServiceWithConsul(serviceName string, options ...Option) {
@@ -111,18 +107,14 @@ func RegisterServiceWithConsul(serviceName string, options ...Option) {
 	registration.Name = serviceName
 	address := Hostname()
 	registration.Address = address
-	port, err := strconv.Atoi(Port(cfg.defaultPort)[1:len(Port(cfg.defaultPort))])
-	if err != nil {
-		log.Fatalf("wrong Port format %v", err)
-	}
-	registration.Port = port
+	registration.Port = port(cfg.defaultPort)
 
 	for _, m := range cfg.registrationModifiers {
 		m(registration)
 	}
 
 	// finally register the service
-	err = consul.Agent().ServiceRegister(registration)
+	err := consul.Agent().ServiceRegister(registration)
 	if err != nil {
 		log.Fatalf("registering to consul failed %v", err)
 	}
@@ -150,7 +142,33 @@ func GetServicesWithConsul(serviceName string) []*api.ServiceEntry {
 	return services
 }
 
+func port(defaultPort int) int {
+	p := os.Getenv("PRODUCT_SERVICE_PORT")
+	if len(strings.TrimSpace(p)) == 0 {
+		return defaultPort
+	}
+	port, err := strconv.Atoi(p)
+	if err != nil {
+		panic("invalid format for the environment variable PRODUCT_SERVICE_PORT")
+	}
+	return port
+}
+
+func healthPort(defaultPort int) int {
+	p := os.Getenv("PRODUCT_HEALTH_PORT")
+	if len(strings.TrimSpace(p)) == 0 {
+		return defaultPort
+	}
+	port, err := strconv.Atoi(p)
+	if err != nil {
+		panic("invalid format for the environment variable PRODUCT_HEALTH_PORT")
+	}
+	return port
+}
+
+// Deprecation: replaced by port
 func Port(defaultPort int) string {
+	// ToDo: remove in v1.0.0
 	p := os.Getenv("PRODUCT_SERVICE_PORT")
 	if len(strings.TrimSpace(p)) == 0 {
 		return ":" + strconv.Itoa(defaultPort)
@@ -158,7 +176,9 @@ func Port(defaultPort int) string {
 	return fmt.Sprintf(":%s", p)
 }
 
+// Deprecation: replaced by healthPort
 func HealthPort(defaultPort int) string {
+	// ToDo: remove in v1.0.0
 	p := os.Getenv("PRODUCT_HEALTH_PORT")
 	if len(strings.TrimSpace(p)) == 0 {
 		return ":" + strconv.Itoa(defaultPort)
