@@ -78,24 +78,11 @@ func WithHTTPHealthCheck(defaultPort int) Option {
 	})
 }
 
-// RegisterServiceWithConsul registers a new service to consul.
-//
-// Deprecation note: To use a simple HTTP health service, use WithHTTPHealthCheck().
-// Currently it uses WithHTTPHealthCheck automatically if no other RegistrationModifier is used.
-// From v1.0.0 on RegisterServiceWithConsul will not do this automatically anymore.
-func RegisterServiceWithConsul(serviceName string, options ...Option) {
+// RegisterService registers a new service to consul and returns the final (already registered) registration.
+func RegisterService(serviceName string, options ...Option) *api.AgentServiceRegistration {
 	cfg := defaultConfig()
 	for _, o := range options {
 		o(cfg)
-	}
-
-	// Backwards compatibility with v0.1.0.
-	// Enable HTTPHealthCheck automatically if no option was passed.
-	// ToDo: remove on v1.0.0
-	if len(cfg.registrationModifiers) == 0 {
-		log.Println("deprecated: automatic health check if no options are passed. Will be removed in v1.0.0")
-		log.Println("use WithHTTPHealthCheck() as option instead")
-		WithHTTPHealthCheck(8101)(cfg)
 	}
 
 	// connect to consul
@@ -118,6 +105,18 @@ func RegisterServiceWithConsul(serviceName string, options ...Option) {
 	if err != nil {
 		log.Fatalf("registering to consul failed %v", err)
 	}
+
+	return registration
+}
+
+// RegisterServiceWithConsul registers a new service to consul.
+//
+// Deprecated: Use RegisterService. RegisterServiceWithConsul will be removed v1.0.0.
+// To use a simple HTTP health service, use WithHTTPHealthCheck.
+func RegisterServiceWithConsul(serviceName string) {
+	// ToDo: remove on v1.0.0
+	RegisterService(serviceName, WithHTTPHealthCheck(8101))
+
 }
 
 // GetRandomServiceWithConsul returns any active service with the given name.
@@ -167,21 +166,19 @@ func healthPort(defaultPort int) int {
 }
 
 // Deprecation: replaced by port
-func Port(defaultPort int) string {
-	// ToDo: remove in v1.0.0
+func Port() string {
 	p := os.Getenv("PRODUCT_SERVICE_PORT")
 	if len(strings.TrimSpace(p)) == 0 {
-		return ":" + strconv.Itoa(defaultPort)
+		return ":8100"
 	}
 	return fmt.Sprintf(":%s", p)
 }
 
 // Deprecation: replaced by healthPort
-func HealthPort(defaultPort int) string {
-	// ToDo: remove in v1.0.0
+func HealthPort() string {
 	p := os.Getenv("PRODUCT_HEALTH_PORT")
 	if len(strings.TrimSpace(p)) == 0 {
-		return ":" + strconv.Itoa(defaultPort)
+		return ":8101"
 	}
 	return fmt.Sprintf(":%s", p)
 }
