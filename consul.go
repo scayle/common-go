@@ -83,6 +83,7 @@ func WithHTTPHealthCheck(defaultPort int) Option {
 // Deprecation note: To use a simple HTTP health service, use WithHTTPHealthCheck().
 // Currently it uses WithHTTPHealthCheck automatically if no other RegistrationModifier is used.
 // From v1.0.0 on RegisterServiceWithConsul will not do this automatically anymore.
+// To disable the health check completely (in < v1.0.0) just pass an empty registration modifier: WithRegistrationModifier(func(_ *api.AgentServiceRegistration){})
 func RegisterServiceWithConsul(serviceName string, options ...Option) {
 	cfg := defaultConfig()
 	for _, o := range options {
