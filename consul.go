@@ -78,8 +78,8 @@ func WithHTTPHealthCheck(defaultPort int) Option {
 	})
 }
 
-// RegisterService registers a new service to consul and returns the final (already registered) registration.
-func RegisterService(serviceName string, options ...Option) *api.AgentServiceRegistration {
+// RegisterConsulService registers a new service to consul and returns the final (already registered) registration.
+func RegisterConsulService(serviceName string, options ...Option) *api.AgentServiceRegistration {
 	cfg := defaultConfig()
 	for _, o := range options {
 		o(cfg)
@@ -111,12 +111,11 @@ func RegisterService(serviceName string, options ...Option) *api.AgentServiceReg
 
 // RegisterServiceWithConsul registers a new service to consul.
 //
-// Deprecated: Use RegisterService. RegisterServiceWithConsul will be removed v1.0.0.
+// Deprecated: Use RegisterConsulService. RegisterServiceWithConsul will be removed v1.0.0.
 // To use a simple HTTP health service, use WithHTTPHealthCheck.
 func RegisterServiceWithConsul(serviceName string) {
 	// ToDo: remove on v1.0.0
-	RegisterService(serviceName, WithHTTPHealthCheck(8101))
-
+	RegisterConsulService(serviceName, WithHTTPHealthCheck(8101))
 }
 
 // GetRandomServiceWithConsul returns any active service with the given name.
